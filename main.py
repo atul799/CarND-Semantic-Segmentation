@@ -554,6 +554,17 @@ def run():
         helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_prob, input_image)
 
         # OPTIONAL: Apply the trained model to a video
+        video_apply=False
+        if (video_apply):
+           vid1 = './driving.mp4'
+           voutput1='./driving_annotated.mp4' 
+           if os.path.isfile(voutput1):
+               os.remove(voutput1) 
+           video_clip = VideoFileClip(vid1).subclip(0,2)
+           processed_video = video_clip.fl_image(lambda image: helper.pipeline(sess, logits, keep_prob, input_image, image, image_shape))
+           #lambda image: change_image(image, myparam)
+           processed_video.write_videofile(voutput1, audio=False)  
+            
 
 #%%
 if __name__ == '__main__':
