@@ -1,0 +1,20 @@
+
+open spot instance choose at least g3.x4 (g2.x2 is too small)
+
+unselect delete of volume, to keep the data
+
+when spot open, go to EC2 management page and choose network and security, click default,
+then chhose SSH in connection and anywehere in IP (very imp or connection won't work)
+
+
+
+
+open a docker session and connect with ssh command
+
+ssh -i "<path>\aws_kep.pem" root@<>.com
+
+
+SFTP:
+pscp -i "<path>\aws_kep.ppk" <file_ftp> user@<awsinstIP>:/home/<aws_path>/<file_ftp>
+
+#attach Volume

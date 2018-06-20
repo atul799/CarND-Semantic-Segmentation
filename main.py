@@ -10,6 +10,8 @@ import project_tests as tests
 #to estimate performance use time module
 import time
 
+import csv
+
 
 #%%
 
@@ -28,11 +30,14 @@ else:
 ###GLOBAL VARS (move to __main__ section###################
 num_classes = 2
 batch_size = 8
-epochs =1
+#epochs =1
 #epochs=10
 #epochs = 50
+#epochs =60
+epochs=100
 
-
+#175 epochs in paper
+epochs=175
 ################################
 #%% 
 
@@ -69,6 +74,9 @@ def load_vgg(sess, vgg_path):
     #create graph instance
     graph=tf.get_default_graph()
     
+    #print("Trainable variables in VGG")
+    print(tf.trainable_variables())
+    
     #collect layers
     
     #input layer
@@ -87,16 +95,26 @@ def load_vgg(sess, vgg_path):
     l7=graph.get_tensor_by_name(vgg_layer7_out_tensor_name)
     
     #print stats on layers
-    tf.Print(l3, [tf.shape(l3)])
-    tf.Print(l4, [tf.shape(l4)])
-    tf.Print(l7, [tf.shape(l7)])
+    print("Layer 1 Shape",l1.get_shape())
+    print("Layer keep_prob Shape",keep.get_shape())
+    #print("Stats on layer 3")
+    #tf.Print(l3, [tf.shape(l3)])
+    print("Layer 3 Shape",l3.get_shape())
+    
+    #print("Stats on layer 4")
+    #tf.Print(l4, [tf.shape(l4)])
+    print("Layer 4 Shape",l4.get_shape())
+    #print("Stats on layer 7")
+    #tf.Print(l7, [tf.shape(l7)])
+    print("Layer 7 Shape",l7.get_shape())
     
     return l1, keep, l3, l4, l7
 
 #move to __main__ section or run()
 #from project_tests.py wirh decorator test_safe
-tests.test_load_vgg(load_vgg, tf)
 
+tests.test_load_vgg(load_vgg, tf)
+print("load vgg test passed")
 #%%
 
 
@@ -123,19 +141,27 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
                                  1,
                                  strides=(1,1),
                                  padding='same',
-                                 kernel_regularizer=w_reg, kernel_initializer=w_init)
+                                 kernel_regularizer=w_reg,
+                                 kernel_initializer=w_init,
+                                 name='conv7_1x1')
     
-    tf.Print(conv7_1x1, [tf.shape(conv7_1x1)])
+    #print("Stats on FCN8")
+    #tf.Print(conv7_1x1, [tf.shape(conv7_1x1)])
+    print("Layer con7_1x1 Shape",conv7_1x1.get_shape())
+    
+    
     #transpose convolution-->upsample by 2 (kernel size 4x4)
     output_7 = tf.layers.conv2d_transpose(conv7_1x1,
                                           num_classes,
                                           4,
                                           strides=(2,2),
                                           padding='same',
-                                          kernel_regularizer=w_reg, kernel_initializer=w_init)
+                                          kernel_regularizer=w_reg,
+                                          kernel_initializer=w_init,
+                                          name='decoder_L1_transpose')
     
-    tf.Print(output_7, [tf.shape(output_7)])
-    
+    #tf.Print(output_7, [tf.shape(output_7)])
+    print("Layer output_7 Shape",output_7.get_shape())
     #1x1 on layer 4
     
     conv4_1x1 = tf.layers.conv2d(vgg_layer4_out,
@@ -143,15 +169,21 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
                 1,
                 strides=(1,1),
                 padding="same",
-                kernel_regularizer=w_reg, kernel_initializer=w_init)
+                kernel_regularizer=w_reg,
+                kernel_initializer=w_init,
+                name='conv4_1x1')
     
     
-    tf.Print(vgg_layer4_out, [tf.shape(conv4_1x1)])
+    #tf.Print(vgg_layer4_out, [tf.shape(conv4_1x1)])
+    print("Layer conv4_1x1 Shape",conv4_1x1.get_shape())
+    
     
     #add layer 4 of vgg(encoder) to layer 7 of decoder (skip connection-->Resnet)
-    input_4 = tf.add(output_7, conv4_1x1)
-    tf.Print(input_4, [tf.shape(input_4)])
-    
+    input_4 = tf.add(output_7, 
+                     conv4_1x1,
+                     name='decoder_L2_skip')
+    #tf.Print(input_4, [tf.shape(input_4)])
+    print("Layer input_4 Shape",input_4.get_shape())
     
     #upsample by 2 (kernel 4x4)
     output_4 = tf.layers.conv2d_transpose(input_4,
@@ -159,40 +191,48 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
                                           4,
                                           strides=(2,2),
                                           padding="same",
-                                          kernel_regularizer=w_reg, kernel_initializer=w_init)
+                                          kernel_regularizer=w_reg,
+                                          kernel_initializer=w_init,
+                                          name='decoder_L3_transpose')
     
-    
+    print("Layer output_4 Shape",output_4.get_shape())
     #1x1 on layer 3
     conv3_1x1 = tf.layers.conv2d(vgg_layer3_out,
                              num_classes,
                              1,
                              strides=(1,1),
                              padding="same",
-                             kernel_regularizer=w_reg, kernel_initializer=w_init)
-    tf.Print(vgg_layer4_out, [tf.shape(vgg_layer4_out)])
-    
+                             kernel_regularizer=w_reg,
+                             kernel_initializer=w_init,
+                             name='conv3_1x1')
+    #tf.Print(vgg_layer4_out, [tf.shape(vgg_layer4_out)])
+    print("Layer conv3_1x1 Shape",conv3_1x1.get_shape())
     
     ##add layer 3 of vgg(encoder) to layer 4 of decoder (skip connection-->Resnet)
-    input_3 = tf.add(output_4, conv3_1x1)
-    
+    input_3 = tf.add(output_4, 
+                     conv3_1x1,
+                     name='decoder_L4_skip')
+    print("Layer input_3 Shape",input_3.get_shape())
     ## upsample by 8
     output_3 = tf.layers.conv2d_transpose(input_3,
                                          num_classes,
                                          16,
                                          strides=(8,8),
                                          padding="same",
-                                         kernel_regularizer=w_reg, kernel_initializer=w_init)
+                                         kernel_regularizer=w_reg,
+                                         kernel_initializer=w_init,
+                                         name='decoder_L5_transpose')
 
+    print("Layer output_3 Shape",output_3.get_shape())
 
-
-    tf.Print(output_3, [tf.shape(output_3)])
+    #tf.Print(output_3, [tf.shape(output_3)])
     
     return output_3
 
 
 #move to run() or __main__
 tests.test_layers(layers)
-
+print("layers test passed")
 #%%
 def optimize(nn_last_layer, correct_label, learning_rate, num_classes,iou_f=False):
     """
@@ -207,25 +247,31 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes,iou_f=Fals
     """
     # Implement function
     
+    #print("IOU_F",iou_f)
     logits = tf.reshape(nn_last_layer, (-1, num_classes))
     
     cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=correct_label))
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
-    train_operation = optimizer.minimize(cross_entropy_loss)
+    train_op = optimizer.minimize(cross_entropy_loss)
     
     if iou_f:
         prediction = tf.argmax(nn_last_layer, axis=3)
+        #road
+        #ground_truth = correct_label[:,:,:,1]
+        #not road
         ground_truth = correct_label[:,:,:,0]
-        iou, iou_op = mean_iou(ground_truth, prediction, num_classes)
-        
-        return logits, train_operation, cross_entropy_loss,iou,iou_op
+        #iou, iou_op = mean_iou(ground_truth, prediction, num_classes)
+        iou, iou_op = tf.metrics.mean_iou(ground_truth, prediction, num_classes)
+        return logits, train_op, cross_entropy_loss,iou,iou_op
     else:
-        return logits, train_operation, cross_entropy_loss
+        
+        return logits, train_op, cross_entropy_loss
     
 
 
 ##move to run() or __main__
 tests.test_optimize(optimize)
+print("optimize test passed")
 #%%
 
 def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_loss, input_image,
@@ -244,7 +290,7 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
     :param learning_rate: TF Placeholder for learning rate
     :param iou is iou accuracy
     :param iou_op is iou operation
-    :param save_trg is an object of model saving method
+    :param save_trg is an object of tf saver method
     """
     # TODO: Implement function
     
@@ -254,8 +300,17 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
     ep_end_time=0
     
     
-    #list of loss values over all the epochs
+    #list of loss values over all the batches
     loss_list=[]
+    
+    #list of accuracy per batch
+    acc_list=[]
+    
+    #iou over batches in an epoch
+    mean_iou=[]
+    
+    #loss over batches in an epoch
+    mean_loss=[]
     
     #learning rate
     lr= 1e-4 #according to paper
@@ -276,11 +331,23 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
         #num of image per epoch counter, used for avg_iou acc per epoch
         image_count=0
         
+        #batch counter
+        batch_ctr=0
+        
         #get batch
+        #print("BATCH_SIZE",batch_size)
         for image,label in get_batches_fn(batch_size):
             #run tf session on optimizer and cross entropy
             #to get acc and loss
-            _, loss = sess.run([train_op, cross_entropy_loss],
+            
+            #capture batch processing time
+            batch_start_time=time.time()
+            
+            #just a test
+            loss=-10
+            #run_b=True
+            #while(run_b):
+            ll, loss = sess.run([train_op, cross_entropy_loss],
                                feed_dict={
                                input_image:image,
                                correct_label:label,
@@ -292,10 +359,16 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
             loss_list.append(loss)
             ep_loss += loss
             
+            loss_calc_end_time=time.time()
+            #print("Loss data")
+            #print("Epoch: {},Batch: {}, Loss:{}, Loss end time:{} ".format(epoch,batch_ctr,loss,loss_calc_end_time-batch_start_time))
+            
+            #######################
             acc=-10;
             ##IOU
             if iou is not None and iou_op is not None:
-                sess.run(iou_op,feed_dict={
+                sess.run(iou_op,
+                        feed_dict={
                         input_image:image,
                         correct_label:label,
                         keep_prob:kb,
@@ -303,40 +376,73 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
                         )
                 #run iou accuracy
                 acc=sess.run(iou)
-                
-                print("Mean IoU =", acc)
-                ep_acc += acc * len(image)
+                acc_list.append(acc)
+                #print("IoU =", acc)
+                ep_acc += acc #* len(image)
             image_count += len(image)
-            print("Epoch: {}, Loss: {} , Accuracy: {}".format(epoch,loss,acc))
             
+            iou_calc_end_time=time.time()
+            #print("Accuracy data")
+            print("Epoch: {}, Batch: {} , Loss: {},Accuracy: {}, Batch time {}".format(epoch,batch_ctr,loss,acc,iou_calc_end_time-batch_start_time))
+            
+            #print("")
+            batch_ctr +=1
         
-        
-        avg_acc = ep_acc / image_count  
-        #Epoch end time
+         
+        #avg_acc= ep_acc/batch_ctr       
+        #avg_loss=ep_loss/batch_ctr
         ep_end_time=time.time()
-        print("Epoch: {} took {} time".format(epoch,ep_end_time-ep_start_time))
         
+        
+        #capture iou for the epoch
+        mean_iou.append(ep_acc/image_count)
+        
+        mean_loss.append(ep_loss/image_count)
             
-        print("EPOCH {} ...".format(epoch+1))
-        print("Loss {}..".format(loss))
+        print("Epoch: {} took {} time".format(epoch,ep_end_time-ep_start_time))
+        print("Mean LOSS: {}, Mean IoU: {}".format(ep_loss/image_count,ep_acc/image_count))
+        
+        #save at each epoch
+        #if save_trg is not None:
+        #    print("Saving model at Epoch:{}")
+        #    #save the model at last epoch
+        #    if epoch==epochs:
+        #        save_trg.save(sess, './models/saved_model')
     
         
             
     
     print("Training complete!") 
+    
+            
+    #save trained data at end of training        
     if save_trg is not None:
+        print("Saving model at Epoch:{}".format(epochs))
         save_trg.save(sess, './models/saved_model')
-
+        
+        
+    return loss_list,acc_list,mean_loss,mean_iou
 #move to run() or __main__      
 tests.test_train_nn(train_nn)
-
+print("train_nn test passed")
 #%%
 def run():
-    num_classes = 2
+    #num_classes = 2
     image_shape = (160, 576)
     data_dir = './data'
     runs_dir = './runs'
+    
+    
+    #correct_label = tf.placeholder(tf.float32, [None, None, None, num_classes], name='correct_label')
+    correct_label  = tf.placeholder(tf.int32, [None, None, None, num_classes], name='correct_label')
+    learning_rate = tf.placeholder(tf.float32, name='learning_rate')
+    keep_prob = tf.placeholder(tf.float32, name='keep_prob')
+    
+    
+    
+    
     tests.test_for_kitti_dataset(data_dir)
+    
 
     # Download pretrained vgg model
     helper.maybe_download_pretrained_vgg(data_dir)
@@ -357,12 +463,12 @@ def run():
     # OPTIONAL: Train and Inference on the cityscapes dataset instead of the Kitti dataset.
     # You'll need a GPU with at least 10 teraFLOPS to train on.
     #  https://www.cityscapes-dataset.com/
+    
 
-    with tf.Session(config=config) as sess:
+    #with tf.Session(config=config) as sess:
+    with tf.Session() as sess:    
         
-        #intialize variables
-        session.run(tf.global_variables_initializer())
-        session.run(tf.local_variables_initializer())
+        #save_trg=None
         
         # Path to vgg model
         vgg_path = os.path.join(data_dir, 'vgg')
@@ -377,28 +483,72 @@ def run():
         
         # use load_vgg function to return input_image,keep_prob,layer3/4/7 
         #from pretrained vgg architecture
-        image_input, keep_prob, layer3, layer4, layer7 = load_vgg(sess, vgg_path)
+        input_image, keep_prob, layer3, layer4, layer7 = load_vgg(sess, vgg_path)
         
         
         
         #FCN decoder network of skip and upsampling
         fcn_output = layers(layer3, layer4, layer7, num_classes)
         
+  
         #Set cross_entropy loss,logits and optimizer calculation expression using tf functions
-
-        logits, train_opt, cross_entropy_loss = optimize(fcn_output, correct_label, learning_rate, num_classes)
+        #optimize(nn_last_layer, correct_label, learning_rate, num_classes,iou_f=False):
+        #logits, train_operation, cross_entropy_loss,iou,iou_op
+        iou_f=True
+        #iou_f=False
+        iou=None
+        iou_op=None
+        if iou_f:
+            logits, train_op, cross_entropy_loss,iou,iou_op = optimize(fcn_output, correct_label, learning_rate, num_classes,iou_f)
         
+        else:
+            logits, train_op, cross_entropy_loss = optimize(fcn_output, correct_label, learning_rate, num_classes,iou_f)
+            
         #logits--> shape nrpixel_pixel x class
         #train_op --> Adamoptimizer with learning rate minimization function
         # cross_entropy_loss --> softmax_cross_entropy_loss mean on logits vs correct labels
         
-        
+        #intialize variables
+        sess.run(tf.global_variables_initializer())
+        sess.run(tf.local_variables_initializer())
+        save_trg = tf.train.Saver(max_to_keep=5)
         
         # TODO: Train NN using the train_nn function
         
-        train_nn(sess, epochs, batch_size, get_batches_fn, 
-             train_opt, cross_entropy_loss, image_input,
-             correct_label, keep_prob, learning_rate)
+        #train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_loss, input_image,
+        #     correct_label, keep_prob, learning_rate,iou=None,iou_op=None,save_trg=None):
+        loss_list,acc_list,mean_loss_list,mean_iou_list=train_nn(sess, epochs, batch_size, get_batches_fn, 
+             train_op, cross_entropy_loss, input_image,
+             correct_label, keep_prob, learning_rate,iou,iou_op,save_trg)
+        
+        ##SAVE BATCH acc/loss data
+        print("batch loss_list length",len(loss_list))
+        batch_file_acc_loss='batch_trg_file.txt'
+        
+        with open(batch_file_acc_loss,'w') as resf:
+            bb="Batch,Loss,Accuracy\n"
+            
+            resf.write(bb)
+            for i in range(len(loss_list)):
+                aa=[str(i),str(loss_list[i]),str(acc_list[i])]
+                aa_str=",".join(aa)
+                aa_str += "\n"
+                resf.write(aa_str)
+        
+        ##SAVE epoch mean loss/iou
+        print("epoch loss_list length",len(mean_loss_list))
+        epoch_file_acc_loss='epoch_trg_file.txt'
+        
+        with open(epoch_file_acc_loss,'w') as resfe:
+            bb="Epoch,Mean Loss,Mean Accuracy\n"
+            
+            resfe.write(bb)
+            for i in range(len(mean_loss_list)):
+                aa=[str(i),str(mean_loss_list[i]),str(mean_iou_list[i])]
+                aa_str=",".join(aa)
+                aa_str += "\n"
+                resfe.write(aa_str)
+        
 
         # TODO: Save inference data using helper.save_inference_samples
         helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_prob, input_image)
@@ -407,5 +557,5 @@ def run():
 
 #%%
 if __name__ == '__main__':
-    save_trg = tf.train.Saver()
+    
     run()
