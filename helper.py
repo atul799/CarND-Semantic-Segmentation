@@ -142,7 +142,7 @@ def save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_p
 
 #############################################
 ##Video pipeline
-def pipeline(sess, logits, keep_prob, image_pl, image_file, image_shape):
+def pipeline(image_file,sess, logits, keep_prob, image_pl,  image_shape):
     """
     Generate test output using the test images
     :param sess: TF session
@@ -156,7 +156,11 @@ def pipeline(sess, logits, keep_prob, image_pl, image_file, image_shape):
 
     ###################################################################       
     #resize image to FCN shape
-    image = scipy.misc.imresize(scipy.misc.imread(image_file), image_shape)
+    #print("IMGFILE SIZE",image_file.shape)
+    #image = scipy.misc.imresize(scipy.misc.imread(image_file), image_shape)
+    image = scipy.misc.imresize(image_file,image_shape)
+    #print("IMG SIZE",image.shape)
+    
     im_softmax = sess.run(
                 [tf.nn.softmax(logits)],
                 {keep_prob: 1.0, image_pl: [image]})
@@ -168,6 +172,5 @@ def pipeline(sess, logits, keep_prob, image_pl, image_file, image_shape):
     street_im.paste(mask, box=None, mask=mask)
     
     return np.array(street_im)
+    #return np.array(image_file)
 
-#def pipeline(image_file):
-    

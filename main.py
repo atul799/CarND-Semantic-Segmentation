@@ -6,13 +6,16 @@ import helper
 import warnings
 from distutils.version import LooseVersion
 import project_tests as tests
-
 #to estimate performance use time module
 import time
 
 import csv
 
-
+#import cv2 # ami doen't have cv2
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+from moviepy.editor import VideoFileClip #carnd ami doesn't have moviepy pip install moviepy
 #%%
 
 # Check TensorFlow Version
@@ -37,8 +40,25 @@ batch_size = 8
 epochs=100
 
 #175 epochs in paper
-epochs=175
+#epochs=175
 ################################
+#%%
+class ProcessImage:
+    def __init__(self, sess, logits, keep_prob, image_pl, image_shape):
+        self.sess = sess
+        self.logits = logits
+        self.keep_prob = keep_prob
+        self.image_pl = image_pl
+        self.image_shape = image_shape
+    def __call__(self, image):
+        print("IM SHAPE",image.shape)
+        im_out=helper.pipeline(self.sess, self.logits, self.keep_prob, self.image_pl, image, self.image_shape)
+        #return image
+        return im_out
+
+
+
+
 #%% 
 
 #mean iou function
@@ -96,7 +116,7 @@ def load_vgg(sess, vgg_path):
     
     #print stats on layers
     print("Layer 1 Shape",l1.get_shape())
-    print("Layer keep_prob Shape",keep.get_shape())
+    #print("Layer keep_prob Shape",keep.get_shape())
     #print("Stats on layer 3")
     #tf.Print(l3, [tf.shape(l3)])
     print("Layer 3 Shape",l3.get_shape())
@@ -315,8 +335,8 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
     #learning rate
     lr= 1e-4 #according to paper
     #keep prob
-    kb=0.5
-    
+    #kb=0.5
+    kb=0.75
     #iterate over nr of epochs
     for epoch in range(epochs):
         #start timer
@@ -400,7 +420,7 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
         mean_loss.append(ep_loss/image_count)
             
         print("Epoch: {} took {} time".format(epoch,ep_end_time-ep_start_time))
-        print("Mean LOSS: {}, Mean IoU: {}".format(ep_loss/image_count,ep_acc/image_count))
+        print("Mean LOSS: {}, Mean IoU: {}".format(ep_loss/batch_ctr,ep_acc/batch_ctr))
         
         #save at each epoch
         #if save_trg is not None:
@@ -436,7 +456,7 @@ def run():
     #correct_label = tf.placeholder(tf.float32, [None, None, None, num_classes], name='correct_label')
     correct_label  = tf.placeholder(tf.int32, [None, None, None, num_classes], name='correct_label')
     learning_rate = tf.placeholder(tf.float32, name='learning_rate')
-    keep_prob = tf.placeholder(tf.float32, name='keep_prob')
+    #keep_prob = tf.placeholder(tf.float32, name='keep_prob')
     
     
     
@@ -536,7 +556,7 @@ def run():
                 resf.write(aa_str)
         
         ##SAVE epoch mean loss/iou
-        print("epoch loss_list length",len(mean_loss_list))
+        #print("epoch loss_list length",len(mean_loss_list))
         epoch_file_acc_loss='epoch_trg_file.txt'
         
         with open(epoch_file_acc_loss,'w') as resfe:
@@ -551,21 +571,28 @@ def run():
         
 
         # TODO: Save inference data using helper.save_inference_samples
-        helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_prob, input_image)
+        img_labeling=True
+        #img_labeling=False
+        if(img_labeling):
+            helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_prob, input_image)
 
-        # OPTIONAL: Apply the trained model to a video
-        video_apply=False
-        if (video_apply):
+        # OPTIONAL: Apply the trained model to a video                
+        #video_labeling=False        
+        video_labeling=True
+        
+        if (video_labeling):
+           print("Starting Video Pipeline")
            vid1 = './driving.mp4'
            voutput1='./driving_annotated.mp4' 
            if os.path.isfile(voutput1):
                os.remove(voutput1) 
-           video_clip = VideoFileClip(vid1).subclip(0,2)
-           processed_video = video_clip.fl_image(lambda image: helper.pipeline(sess, logits, keep_prob, input_image, image, image_shape))
-           #lambda image: change_image(image, myparam)
+           video_clip = VideoFileClip(vid1) #.subclip(0,2)
+           ##pipeline(sess, logits, keep_prob, image_pl, image_file, image_shape)
+           processed_video = video_clip.fl_image(lambda image: helper.pipeline(image,sess, logits, keep_prob, input_image, image_shape))
+           ##lambda image: change_image(image, myparam)
            processed_video.write_videofile(voutput1, audio=False)  
-            
-
+           #processed_video = video_clip.fl_image(ProcessImage(sess, logits, keep_prob, input_image, image_shape)) 
+           #processed_video.write_videofile(voutput1, audio=False) 
 #%%
 if __name__ == '__main__':
     
