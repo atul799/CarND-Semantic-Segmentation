@@ -1,6 +1,89 @@
 # Semantic Segmentation
-### Introduction
-In this project, you'll label the pixels of a road in images using a Fully Convolutional Network (FCN).
+
+[![Udacity - Self-Driving Car NanoDegree](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
+
+
+# Project Goal 
+---
+* Implement a Fully Convolutional Network (FCN) and train the network
+* Label the pixels of a road in images and a video using the trained  Fully Convolutional Network (FCN).
+* Summarize the results with a written report
+
+
+![picture alt](./outputs/um_000013_kp05.png) *An image with lane lines annotated*
+
+
+# Overview
+---
+The problem we are trying to solve in Semantic Segmentation is where in an image an object is (as opposed to if this is image of a specific thing that we do with CNNs).In this project we will identify objects at pixel level granularity.
+
+The implementation is based on paper: [Fully Convolutional Networks for Semantic Segmentation](https://people.eecs.berkeley.edu/~jonlong/long_shelhamer_fcn.pdf)
+
+The architecture of implementation of FCN is:
+![picture alt](./outputs/FCN_overview.png)
+
+
+
+**Fully Convolutional Network (FCN)**  consists of 2 parts, Encoder and Decoder.
+
+The **Encoder** is the CNN such as VGG or resnet or other networks trained for classification. CNNs typically have fully connected (Dense) layers followed by a softmax at the end of network. The CNNs "flatten" the network hence looses spatial information.
+
+The **Decoder** consists of following parts:
+
+1. 1x1 Convolution Layer: Instead of using fully connected layers in Encoder, they are replaced with 1x1 convolution, this preserves spatial information of objects. 
+2. Upsampling (Transpose Convolution): The information in the FCN needs to be converted to size of the image that was input. Upsampling is done using transpose convolution operation to restore the output to size of original image.
+3. Skip Connection: Skip connection helps more accurate end-to-end learning and avoids layers with weak weights or no learning (ResNet)
+
+
+Combining the above elements, following architecture is used:
+![picture alt](./outputs/with_skip_layers.png)
+
+
+
+Here is how it is implemented:
+![picture alt](./outputs/full_architecture.png)
+
+
+Pretrained [VGG network](https://s3-us-west-1.amazonaws.com/udacity-selfdrivingcar/vgg.zip) is used as Encoder, Decoder including Upsampling and skip layer are implemented according to architecture mentioned in paper referred to earlier.
+
+[Kitti Road dataset](https://s3-us-west-1.amazonaws.com/udacity-selfdrivingcar/advanced_deep_learning/data_road.zip) contains the training data with labeled images.
+
+
+## Accuracy
+Intersection over union operation is used to ascertain accuracy of the training step.
+
+# Results
+---
+The hyper parameters to tune for this project were epochs,batch size and keep probability. 
+The referred paper uses 175 epoch to train, However, in this project max epoch that the network is trained is 100, changing keep probability from 0.5 to 0.75 has slight impact of accuracy.
+
+
+** Results with 0.5 as keep prob
+
+![picture alt](./outputs/um_000013_kp_05.png)
+![picture alt](./outputs/um_000073_kp05.png)
+![picture alt](./outputs/umm_000070_kp05.png)
+
+
+** Results with 0.75 as keep prob
+
+![picture alt](./outputs/um_000013_kp_075.png)
+![picture alt](./outputs/um_000073_075.png)
+![picture alt](./outputs/umm_000070_kp075.png)
+
+
+For Epoch=100 the loss reached is 0.06 and mean IoU (pixel is road)  at 0.85.
+![picture alt](./outputs/loss_accuracy.png)
+
+
+
+
+# Improvements and Enhancements
+
+* The training set is small, use of data augmentation might help
+* Suggestions about Inference performance is not implemented in this project, this will help improve training time.
+* The man IoU accuracy is only 0.85, more training (data and epoch) might be needed
+
 
 ### Setup
 ##### GPU
