@@ -37,6 +37,7 @@ batch_size = 8
 #epochs=10
 #epochs = 50
 #epochs =60
+#epochs =70
 epochs=100
 
 #175 epochs in paper
@@ -95,6 +96,8 @@ def load_vgg(sess, vgg_path):
     graph=tf.get_default_graph()
     
     #print("Trainable variables in VGG")
+    
+    #print all the trainable variables in VGG model
     print(tf.trainable_variables())
     
     #collect layers
@@ -184,7 +187,22 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     print("Layer output_7 Shape",output_7.get_shape())
     #1x1 on layer 4
     
-    conv4_1x1 = tf.layers.conv2d(vgg_layer4_out,
+    #Scale pooling layers
+    pool3_out_scaled = tf.multiply(vgg_layer3_out, 0.0001, name='pool3_out_scaled')
+    pool4_out_scaled = tf.multiply(vgg_layer4_out, 0.01, name='pool4_out_scaled')
+    
+    
+    #conv4_1x1 = tf.layers.conv2d(vgg_layer4_out,
+    #            num_classes,
+    #            1,
+    #            strides=(1,1),
+    #            padding="same",
+    #            kernel_regularizer=w_reg,
+    #            kernel_initializer=w_init,
+    #            name='conv4_1x1')
+    
+    #use scaled pool4 layer
+    conv4_1x1 = tf.layers.conv2d(pool4_out_scaled,
                 num_classes,
                 1,
                 strides=(1,1),
@@ -217,7 +235,16 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     
     print("Layer output_4 Shape",output_4.get_shape())
     #1x1 on layer 3
-    conv3_1x1 = tf.layers.conv2d(vgg_layer3_out,
+    #conv3_1x1 = tf.layers.conv2d(vgg_layer3_out,
+    #                         num_classes,
+    #                         1,
+    #                         strides=(1,1),
+    #                         padding="same",
+    #                         kernel_regularizer=w_reg,
+    #                         kernel_initializer=w_init,
+    #                         name='conv3_1x1')
+    
+    conv3_1x1 = tf.layers.conv2d(pool3_out_scaled,
                              num_classes,
                              1,
                              strides=(1,1),
@@ -225,6 +252,7 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
                              kernel_regularizer=w_reg,
                              kernel_initializer=w_init,
                              name='conv3_1x1')
+    
     #tf.Print(vgg_layer4_out, [tf.shape(vgg_layer4_out)])
     print("Layer conv3_1x1 Shape",conv3_1x1.get_shape())
     
@@ -277,9 +305,9 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes,iou_f=Fals
     if iou_f:
         prediction = tf.argmax(nn_last_layer, axis=3)
         #road
-        #ground_truth = correct_label[:,:,:,1]
+        ground_truth = correct_label[:,:,:,1]
         #not road
-        ground_truth = correct_label[:,:,:,0]
+        #ground_truth = correct_label[:,:,:,0]
         #iou, iou_op = mean_iou(ground_truth, prediction, num_classes)
         iou, iou_op = tf.metrics.mean_iou(ground_truth, prediction, num_classes)
         return logits, train_op, cross_entropy_loss,iou,iou_op
@@ -438,7 +466,22 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
     #save trained data at end of training        
     if save_trg is not None:
         print("Saving model at Epoch:{}".format(epochs))
-        save_trg.save(sess, './models/saved_model')
+        
+        model_runs_dir = './model'
+        save_path = os.path.join(model_runs_dir, 'saved_model')
+        save_path_pb = os.path.join(model_runs_dir, 'model.pb')
+        
+        
+        saver_def = save_trg.as_saver_def()
+        print(saver_def.filename_tensor_name)
+        print(saver_def.restore_op_name)
+
+        save_trg.save(sess, save_path)
+        tf.train.write_graph(sess.graph_def, '.', save_path_pb, as_text=False)
+        print('Saved normal at : {}'.format(save_path))
+        
+        
+        #save_trg.save(sess, save_path)
         
         
     return loss_list,acc_list,mean_loss,mean_iou
@@ -472,7 +515,7 @@ def run():
     # Freezing Graphs
     #TensorFlow configuration object. 
     config = tf.ConfigProto()
-    #config.gpu_options.allocator_type = 'BFC'
+    config.gpu_options.allocator_type = 'BFC'
 
     # JIT level, this can be set to ON_1 or ON_2
     jit_level = tf.OptimizerOptions.ON_1
