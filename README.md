@@ -60,7 +60,7 @@ The referred paper uses 175 epoch to train, However, in this project max epoch t
 
 ** Results with 0.5 as keep prob
 
-![picture alt](./outputs/um_000013_kp_05.png)
+![picture alt](./outputs/um_000013_kp05.png)
 ![picture alt](./outputs/um_000073_kp05.png)
 ![picture alt](./outputs/umm_000070_kp05.png)
 
@@ -75,6 +75,19 @@ The referred paper uses 175 epoch to train, However, in this project max epoch t
 For Epoch=100 the loss reached is 0.06 and mean IoU (pixel is road)  at 0.85.
 ![picture alt](./outputs/loss_accuracy.png)
 
+
+# Setup,Run and Result
+---
+The project can be run using following command:
+`python main.py`
+
+The Software and data Requirements are listed in the section below.
+
+The labeled images from last training and inference is in directory:
+`./run`
+
+A pipeline to label video is also implemented and resulting video is
+`driving_annotated.mp4`
 
 
 
@@ -123,9 +136,4 @@ python main.py
 - The original FCN-8s was trained in stages. The authors later uploaded a version that was trained all at once to their GitHub repo.  The version in the GitHub repo has one important difference: The outputs of pooling layers 3 and 4 are scaled before they are fed into the 1x1 convolutions.  As a result, some students have found that the model learns much better with the scaling layers included. The model may not converge substantially faster, but may reach a higher IoU and accuracy. 
 - When adding l2-regularization, setting a regularizer in the arguments of the `tf.layers` is not enough. Regularization loss terms must be manually added to your loss function. otherwise regularization is not implemented.
  
-### Using GitHub and Creating Effective READMEs
-If you are unfamiliar with GitHub , Udacity has a brief [GitHub tutorial](http://blog.udacity.com/2015/06/a-beginners-git-github-tutorial.html) to get you started. Udacity also provides a more detailed free [course on git and GitHub](https://www.udacity.com/course/how-to-use-git-and-github--ud775).
 
-To learn about REAMDE files and Markdown, Udacity provides a free [course on READMEs](https://www.udacity.com/courses/ud777), as well. 
-
-GitHub also provides a [tutorial](https://guides.github.com/features/mastering-markdown/) about creating Markdown files.
